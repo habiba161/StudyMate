@@ -1,1 +1,73 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Login - StudyMate</title><link rel="stylesheet" href="/css/styles.css"></head><body class="auth-page"><div class="top-strip"></div><div class="auth-center"><div class="auth-card"><a href="/" class="logo"><span class="logo-icon"></span><span>StudyMate</span></a><h1>Welcome Back</h1><p class="auth-sub">Sign in to continue your learning journey</p><div class="form-group"><label class="form-label">Email</label><input class="input" placeholder="student@university.edu"></div><div class="form-group"><label class="form-label">Password</label><input class="input" placeholder="Enter your password" type="password"></div><div class="inline-right"><a href="#">Forgot password?</a></div><a class="btn btn-primary btn-full" href="/dashboard">Login</a><div class="auth-switch">Don't have an account? <a href="/signup">Sign up instead</a></div></div></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - StudyMate</title>
+  <link rel="stylesheet" href="/css/styles.css">
+
+  <!-- ✅ Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+
+<body class="auth-page">
+<div class="top-strip"></div>
+
+<div class="auth-center">
+  <div class="auth-card">
+
+    <a href="/" class="logo">
+      <span class="logo-icon"></span>
+      <span>StudyMate</span>
+    </a>
+
+    <h1>Welcome Back</h1>
+    <p class="auth-sub">Sign in to continue your learning journey</p>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input id="email" class="input" placeholder="student@university.edu">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input id="password" class="input" type="password" placeholder="Enter your password">
+    </div>
+
+    <div class="inline-right">
+      <a href="#">Forgot password?</a>
+    </div>
+
+    <button id="loginBtn" class="btn btn-primary btn-full">Login</button>
+
+    <div class="auth-switch">
+      Don't have an account? <a href="/signup">Sign up instead</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- ✅ Script -->
+<script type="module">
+import { supabase } from "/js/supabase.js";
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password,
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Login successful!");
+    window.location.href = "/dashboard";
+  }
+});
+</script>
+
+</body>
+</html>
