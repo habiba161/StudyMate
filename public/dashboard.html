@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dashboard - StudyMate</title><link rel="stylesheet" href="/css/styles.css"></head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <a href="/dashboard" class="logo"><span class="logo-icon"></span><span>StudyMate</span></a>
+      <nav class="side-nav">
+        <a class="side-link active" href="/dashboard"><span class="side-icon">⌂</span>Dashboard</a>
+        <a class="side-link" href="/dashboard/upload"><span class="side-icon">⤴</span>Upload Notes</a>
+        <a class="side-link" href="/dashboard/quiz"><span class="side-icon">❓</span>Generate Quiz</a>
+        <a class="side-link" href="/dashboard/explain"><span class="side-icon">✿</span>AI Explanation</a>
+        <a class="side-link" href="/dashboard/progress"><span class="side-icon">↗</span>Progress Tracker</a>
+        <a class="side-link" href="/dashboard/profile"><span class="side-icon">◔</span>Profile</a>
+      </nav>
+    </div>
+    <a class="logout" href="/login">↩ Logout</a>
+  </aside>
+  <main class="main-content"><div class="page-wrap">
+    <h1 class="page-title">Welcome back, Student!</h1>
+    <p class="page-sub">Here's what's happening with your studies today</p>
+
+    <section class="action-grid">
+      <a href="/dashboard/upload" class="action-card"><div class="icon-box">✦</div><h3>Generate Summary</h3><p>Upload notes and get AI summaries</p></a>
+      <a href="/dashboard/quiz" class="action-card"><div class="icon-box" style="background:#f3e8ff;color:#a855f7;">❓</div><h3>Create Quiz</h3><p>Generate practice questions</p></a>
+      <a href="/dashboard/explain" class="action-card"><div class="icon-box" style="background:#dcfce7;color:#16a34a;">◔</div><h3>Ask AI Explanation</h3><p>Get concepts explained simply</p></a>
+      <a href="/dashboard/progress" class="action-card"><div class="icon-box" style="background:#ffedd5;color:#f97316;">↗</div><h3>View Progress Stats</h3><p>Track your learning journey</p></a>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="panel">
+        <h3>Weekly Study Time</h3>
+        <div class="chart-box">
+          <div class="chart-grid"><div></div><div></div><div></div><div></div></div>
+          <svg class="line-svg" viewBox="0 0 900 220" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#3b82f6" stroke-width="3" points="35,135 160,125 290,130 410,110 540,120 680,95 850,100"></polyline>
+            <g fill="#3b82f6">
+              <circle cx="35" cy="135" r="4"></circle><circle cx="160" cy="125" r="4"></circle><circle cx="290" cy="130" r="4"></circle><circle cx="410" cy="110" r="4"></circle><circle cx="540" cy="120" r="4"></circle><circle cx="680" cy="95" r="4"></circle><circle cx="850" cy="100" r="4"></circle>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <div class="stats-column">
+        <div class="metric-card blue-soft"><h4>Topics Completed</h4><div class="metric-value" style="color:#1d4ed8;">24</div><div class="metric-note" style="color:#2563eb;">+3 this week</div></div>
+        <div class="metric-card purple-soft"><h4>Quiz Performance</h4><div class="metric-value" style="color:#9333ea;">87%</div><div class="metric-note" style="color:#a855f7;">Average score</div></div>
+        <div class="metric-card green-soft"><h4>Study Streak</h4><div class="metric-value" style="color:#166534;">12 days</div><div class="metric-note" style="color:#16a34a;">Keep it up!</div></div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:12px;">
+      <h3>Recent Activity</h3>
+      <div class="recent-list">
+        <div class="recent-item"><div class="recent-main"><div class="recent-dot">•</div><div class="recent-text"><strong>Generated summary</strong><span>Linear Algebra Chapter 3</span></div></div><span class="recent-time">2 hours ago</span></div>
+        <div class="recent-item"><div class="recent-main"><div class="recent-dot">•</div><div class="recent-text"><strong>Completed quiz</strong><span>Data Structures</span></div></div><span class="recent-time">5 hours ago</span></div>
+        <div class="recent-item"><div class="recent-main"><div class="recent-dot">•</div><div class="recent-text"><strong>Asked AI explanation</strong><span>Quantum physics basics</span></div></div><span class="recent-time">1 day ago</span></div>
+        <div class="recent-item"><div class="recent-main"><div class="recent-dot">•</div><div class="recent-text"><strong>Generated flashcards</strong><span>French vocabulary</span></div></div><span class="recent-time">2 days ago</span></div>
+      </div>
+    </section>
+  </div></main>
+</div>
+</body></html>
