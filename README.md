@@ -12,3 +12,14 @@ Frontend implementation for StudyMate using HTML, CSS, JavaScript, and Node.js (
 - Explanation
 - Progress
 - Profile
+
+## Run StudyMate using Docker
+
+Build the image:
+docker build -t studymate-app .
+
+Run the container:
+docker run -p 5050:3000 studymate-app
+
+Open in browser:
+http://localhost:5050
