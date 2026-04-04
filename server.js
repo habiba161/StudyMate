@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-
+const supabase = require('./lib/supabaseClient')
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -23,7 +23,7 @@ app.get('/dashboard/explain', sendPage('explain.html'));
 app.get('/dashboard/progress', sendPage('progress.html'));
 app.get('/dashboard/profile', sendPage('profile.html'));
 
-app.post("/api/signup", (req, res) => {
+app.post("/api/signup", async (req, res) => {
 
   const { name, email, password } = req.body;
 
@@ -33,101 +33,91 @@ app.post("/api/signup", (req, res) => {
     });
   }
 
-  console.log("New user created:", name, email);
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert([{ name, email, password }])
+
+  if (error) return res.status(500).json({ error })
 
   res.json({
-    message: "Account created successfully"
+    message: "Account created successfully", data
   });
 
 });
 
 // Login API endpoint
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body
 
-  const { email, password } = req.body;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('email', email)
+    .eq('password', password)
+    .single()
 
-  if (!email || !password) {
-    return res.status(400).json({
-      error: "Email and password required"
-    });
+  if (error || !data) {
+    return res.status(401).json({ error: "Invalid credentials" })
+    
   }
-
-  console.log("User logged in:", email);
 
   res.json({
     message: "Login successful",
+    user: data,
     redirect: "/dashboard"
-  });
-
-});
+  })
+})
 
 // Summary API endpoint
-app.post("/api/summary", (req, res) => {
-  const { text } = req.body;
+app.post("/api/summary", async (req, res) => {
+  const { text } = req.body
 
-  if (!text) {
-    return res.status(400).json({
-      error: "Text is required for summary"
-    });
-  }
+  const summary = text.slice(0, 100) + "..."
 
-  // placeholder summary logic
-  const summary = text.slice(0, 100) + "..."; // just first 100 chars for now
+  const { data, error } = await supabase
+    .from('summaries')
+    .insert([{ text, summary }])
 
-  console.log("Summary generated for text:", text);
+  if (error) return res.status(500).json({ error })
 
-  res.json({
-    summary: summary
-  });
-});
+  res.json({ summary, data })
+})
 
 // Quiz API endpoint
-app.post("/api/quiz", (req, res) => {
-  const { topic } = req.body;
+app.post("/api/quiz", async (req, res) => {
+  const { topic } = req.body
 
-  if (!topic) {
-    return res.status(400).json({
-      error: "Topic is required to generate quiz"
-    });
-  }
-
-  // placeholder quiz logic.
   const quiz = [
     {
       question: `What is the main point of ${topic}?`,
-      options: ["Option A", "Option B", "Option C", "Option D"],
-      answer: "Option A"
-    },
-    {
-      question: `Explain one key concept of ${topic}.`,
-      options: ["Option A", "Option B", "Option C", "Option D"],
-      answer: "Option B"
+      options: ["A", "B", "C", "D"],
+      answer: "A"
     }
-  ];
+  ]
 
-  console.log("Quiz generated for topic:", topic);
+  const { data, error } = await supabase
+    .from('quizzes')
+    .insert([{ topic, quiz }])
 
-  res.json({ quiz });
-});
+  if (error) return res.status(500).json({ error })
+
+  res.json({ quiz, data })
+})
 
 // Explanation API endpoint
-app.post("/api/explanation", (req, res) => {
-  const { topic } = req.body;
+app.post("/api/explanation", async (req, res) => {
+  const { topic } = req.body
 
-  if (!topic) {
-    return res.status(400).json({
-      error: "Topic is required to generate explanation"
-    });
-  }
+  const explanation = `${topic} is an important concept...`
 
+  const { data, error } = await supabase
+    .from('summaries')
+    .insert([{ topic, explanation }])
 
-  // Placeholder explanation logic
-  const explanation = `${topic} is an important concept that involves key ideas and examples for learning.`;
+  if (error) return res.status(500).json({ error })
 
-  console.log("Explanation generated for topic:", topic);
-
-  res.json({ explanation });
-});
+  res.json({ explanation, data })
+})
 
 app.listen(PORT, () => {
   console.log(`StudyMate running on http://localhost:${PORT}`);
