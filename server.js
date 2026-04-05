@@ -23,42 +23,68 @@ app.get('/dashboard/explain', sendPage('explain.html'));
 app.get('/dashboard/progress', sendPage('progress.html'));
 app.get('/dashboard/profile', sendPage('profile.html'));
 
+app.get("/api/notes", async (req, res) => {
+  const { data, error } = await supabase
+    .from('notes')
+    .select('*')
+
+  if (error) return res.status(500).json({ error })
+
+  res.json({ data })
+})
+
+app.post("/api/notes", async (req, res) => {
+  const { user_id, content } = req.body
+
+  if (!user_id || !content) {
+    return res.status(400).json({ error: "Missing fields" })
+  }
+
+  const { data, error } = await supabase
+    .from('notes')
+    .insert([{ user_id, content }])
+    .select()
+
+  if (error) return res.status(500).json({ error })
+
+  res.json({ data })
+})
 app.post("/api/signup", async (req, res) => {
+  const { full_name, email } = req.body
 
-  const { name, email, password } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({
-      error: "All fields are required"
-    });
+  if (!full_name || !email) {
+    return res.status(400).json({ error: "Missing fields" })
   }
 
   const { data, error } = await supabase
     .from('profiles')
-    .insert([{ name, email, password }])
+    .insert([{ full_name, email }])
+    .select()   // 🔥 THIS IS THE FIX
 
   if (error) return res.status(500).json({ error })
 
   res.json({
-    message: "Account created successfully", data
-  });
-
-});
+    message: "Account created",
+    data
+  })
+})
 
 // Login API endpoint
 app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body
+  const { email } = req.body
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" })
+  }
 
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('email', email)
-    .eq('password', password)
     .single()
 
   if (error || !data) {
-    return res.status(401).json({ error: "Invalid credentials" })
-    
+    return res.status(401).json({ error: "User not found" })
   }
 
   res.json({
@@ -70,53 +96,49 @@ app.post("/api/login", async (req, res) => {
 
 // Summary API endpoint
 app.post("/api/summary", async (req, res) => {
-  const { text } = req.body
+  const { note_id, summary_text } = req.body
 
-  const summary = text.slice(0, 100) + "..."
+  if (!note_id || !summary_text) {
+    return res.status(400).json({ error: "Missing fields" })
+  }
 
   const { data, error } = await supabase
     .from('summaries')
-    .insert([{ text, summary }])
+    .insert([{ note_id, summary_text }])
+    .select()
 
   if (error) return res.status(500).json({ error })
 
-  res.json({ summary, data })
+  res.json({ data })
 })
 
 // Quiz API endpoint
 app.post("/api/quiz", async (req, res) => {
-  const { topic } = req.body
+  const { note_id, question, answer } = req.body
 
-  const quiz = [
-    {
-      question: `What is the main point of ${topic}?`,
-      options: ["A", "B", "C", "D"],
-      answer: "A"
-    }
-  ]
+  if (!note_id || !question || !answer) {
+    return res.status(400).json({ error: "Missing fields" })
+  }
 
   const { data, error } = await supabase
     .from('quizzes')
-    .insert([{ topic, quiz }])
+    .insert([{ note_id, question, answer }])
+    .select()
 
   if (error) return res.status(500).json({ error })
 
-  res.json({ quiz, data })
+  res.json({ data })
 })
 
 // Explanation API endpoint
 app.post("/api/explanation", async (req, res) => {
   const { topic } = req.body
-
+  if (!topic) {
+    return res.status(400).json({ error: "Topic is required" })
+  }
   const explanation = `${topic} is an important concept...`
 
-  const { data, error } = await supabase
-    .from('summaries')
-    .insert([{ topic, explanation }])
-
-  if (error) return res.status(500).json({ error })
-
-  res.json({ explanation, data })
+  res.json({ explanation })
 })
 
 app.listen(PORT, () => {
