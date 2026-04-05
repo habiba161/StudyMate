@@ -70,11 +70,19 @@ app.post("/api/signup", async (req, res) => {
     ])
     .select()
 
-  if (error) return res.status(500).json({ error })
+  //if (error) return res.status(500).json({ error })
+  if (error) {
+    if (error.code === "23505") {
+      return res.status(409).json({ error: "Email already in use" })
+    }
+
+    return res.status(500).json({ error: "Something went wrong" })
+  }
+  const safeData = data.map(({ password_hash, ...rest }) => rest)
 
   res.json({
     message: "Account created",
-    data
+    data: safeData
   })
 })
 
@@ -97,12 +105,11 @@ app.post("/api/login", async (req, res) => {
   if (!isMatch) {
     return res.status(401).json({ error: "Invalid credentials" })
   }
-
+  const { password_hash, ...safeUser } = data
   res.json({
-    message: "Login successful",
-    user: data,
-    redirect: "/dashboard"
-  })
+  message: "Login successful",
+  user: safeUser,
+  redirect: "/dashboard"})
 })
 
 // Summary API endpoint
