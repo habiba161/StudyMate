@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const supabase = require('./lib/supabaseClient')
 const app = express();
-
+const bcrypt = require('bcrypt')
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
@@ -49,17 +49,26 @@ app.post("/api/notes", async (req, res) => {
 
   res.json({ data })
 })
-app.post("/api/signup", async (req, res) => {
-  const { full_name, email } = req.body
 
-  if (!full_name || !email) {
+app.post("/api/signup", async (req, res) => {
+  const { full_name, email, password } = req.body
+
+  if (!full_name || !email || !password) {
     return res.status(400).json({ error: "Missing fields" })
   }
 
+  const password_hash = await bcrypt.hash(password, 10)
+
   const { data, error } = await supabase
     .from('profiles')
-    .insert([{ full_name, email }])
-    .select()   // 🔥 THIS IS THE FIX
+    .insert([
+      {
+        full_name,
+        email,
+        password_hash
+      }
+    ])
+    .select()
 
   if (error) return res.status(500).json({ error })
 
@@ -71,11 +80,7 @@ app.post("/api/signup", async (req, res) => {
 
 // Login API endpoint
 app.post("/api/login", async (req, res) => {
-  const { email } = req.body
-
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" })
-  }
+  const { email, password } = req.body
 
   const { data, error } = await supabase
     .from('profiles')
@@ -84,7 +89,13 @@ app.post("/api/login", async (req, res) => {
     .single()
 
   if (error || !data) {
-    return res.status(401).json({ error: "User not found" })
+    return res.status(401).json({ error: "Invalid credentials" })
+  }
+
+  const isMatch = await bcrypt.compare(password, data.password_hash)
+
+  if (!isMatch) {
+    return res.status(401).json({ error: "Invalid credentials" })
   }
 
   res.json({
