@@ -209,13 +209,40 @@ ${note_text}
 });
 // ---------------------------------------------------
 
-// Explanation (dummy)
 app.post("/api/explanation", async (req, res) => {
-  const { topic } = req.body;
-  if (!topic) return res.status(400).json({ error: "Topic is required" });
+  try {
+    const { topic } = req.body;
 
-  const explanation = `${topic} is an important concept...`;
-  res.json({ explanation });
+    if (!topic) {
+      return res.status(400).json({ error: "Topic is required" });
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+
+    const prompt = `
+Explain this topic in simple, clear terms for a student:
+
+Topic: ${topic}
+
+Make it:
+- Easy to understand
+- Well structured
+- Use examples if helpful
+`;
+
+    const result = await model.generateContent(prompt);
+
+    const explanation = result.response.text();
+
+    res.json({ explanation });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: "Explanation generation failed",
+      details: err.message
+    });
+  }
 });
 
 app.listen(PORT, () => {
