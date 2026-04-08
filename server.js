@@ -1,22 +1,25 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const supabase = require('./lib/supabaseClient')
-const app = express();
-const bcrypt = require('bcrypt')
-const PORT = process.env.PORT || 3000;
-app.use(express.json());
-const OpenAI = require("openai");
+const supabase = require('./lib/supabaseClient');
+const bcrypt = require('bcrypt');
+const { TextServiceClient } = require('@google-ai/generativelanguage').v1beta2;
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Initialize Gemini client
+const client = new TextServiceClient({ apiKey: process.env.GOOGLE_API_KEY });
+
+// Helper to serve HTML pages
 const sendPage = (page) => (req, res) => {
   res.sendFile(path.join(__dirname, 'public', page));
 };
 
+// --- Routes for pages ---
 app.get('/', sendPage('index.html'));
 app.get('/signup', sendPage('signup.html'));
 app.get('/login', sendPage('login.html'));
@@ -27,157 +30,108 @@ app.get('/dashboard/explain', sendPage('explain.html'));
 app.get('/dashboard/progress', sendPage('progress.html'));
 app.get('/dashboard/profile', sendPage('profile.html'));
 
+// --- API Endpoints ---
+
+// Notes
 app.get("/api/notes", async (req, res) => {
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-
-  if (error) return res.status(500).json({ error })
-
-  res.json({ data })
-})
+  const { data, error } = await supabase.from('notes').select('*');
+  if (error) return res.status(500).json({ error });
+  res.json({ data });
+});
 
 app.post("/api/notes", async (req, res) => {
-  const { user_id, content } = req.body
-
-  if (!user_id || !content) {
-    return res.status(400).json({ error: "Missing fields" })
-  }
+  const { user_id, content } = req.body;
+  if (!user_id || !content) return res.status(400).json({ error: "Missing fields" });
 
   const { data, error } = await supabase
     .from('notes')
     .insert([{ user_id, content }])
-    .select()
+    .select();
 
-  if (error) return res.status(500).json({ error })
+  if (error) return res.status(500).json({ error });
+  res.json({ data });
+});
 
-  res.json({ data })
-})
-
+// Signup
 app.post("/api/signup", async (req, res) => {
-  const { full_name, email, password } = req.body
+  const { full_name, email, password } = req.body;
+  if (!full_name || !email || !password) return res.status(400).json({ error: "Missing fields" });
 
-  if (!full_name || !email || !password) {
-    return res.status(400).json({ error: "Missing fields" })
-  }
-
-  const password_hash = await bcrypt.hash(password, 10)
-
+  const password_hash = await bcrypt.hash(password, 10);
   const { data, error } = await supabase
     .from('profiles')
-    .insert([
-      {
-        full_name,
-        email,
-        password_hash
-      }
-    ])
-    .select()
+    .insert([{ full_name, email, password_hash }])
+    .select();
 
-  //if (error) return res.status(500).json({ error })
   if (error) {
-    if (error.code === "23505") {
-      return res.status(409).json({ error: "Email already in use" })
-    }
-
-    return res.status(500).json({ error: "Something went wrong" })
+    if (error.code === "23505") return res.status(409).json({ error: "Email already in use" });
+    return res.status(500).json({ error: "Something went wrong" });
   }
-  const safeData = data.map(({ password_hash, ...rest }) => rest)
 
-  res.json({
-    message: "Account created",
-    data: safeData
-  })
-})
+  const safeData = data.map(({ password_hash, ...rest }) => rest);
+  res.json({ message: "Account created", data: safeData });
+});
 
-// Login API endpoint
+// Login
 app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body
-
+  const { email, password } = req.body;
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('email', email)
-    .single()
+    .single();
 
-  if (error || !data) {
-    return res.status(401).json({ error: "Invalid credentials" })
-  }
+  if (error || !data) return res.status(401).json({ error: "Invalid credentials" });
 
-  const isMatch = await bcrypt.compare(password, data.password_hash)
+  const isMatch = await bcrypt.compare(password, data.password_hash);
+  if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
 
-  if (!isMatch) {
-    return res.status(401).json({ error: "Invalid credentials" })
-  }
-  const { password_hash, ...safeUser } = data
-  res.json({
-  message: "Login successful",
-  user: safeUser,
-  redirect: "/dashboard"})
-})
+  const { password_hash, ...safeUser } = data;
+  res.json({ message: "Login successful", user: safeUser, redirect: "/dashboard" });
+});
 
-// Summary API endpoint
-app.post("/api/summary", async (req, res) => {
+// -------------------- Gemini Summary --------------------
+app.post('/api/summary', async (req, res) => {
   try {
     const { text } = req.body;
 
-    if (!text) {
-      return res.status(400).json({ error: "Text is required" });
-    }
+    if (!text) return res.status(400).json({ error: "No text provided" });
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Summarize the following study notes clearly for a university student."
-        },
-        {
-          role: "user",
-          content: text
-        }
-      ]
+    const response = await client.generateText({
+      model: "models/text-bison-001", // fixed supported model
+      prompt: { text: text }
     });
 
-    const summary = response.choices[0].message.content;
-
-    res.json({ summary });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Summary generation failed" });
+    res.json({ summary: response[0].candidates[0].content });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Summary generation failed", details: err.message });
   }
 });
+// --------------------------------------------------------
 
-// Quiz API endpoint
+// Quiz
 app.post("/api/quiz", async (req, res) => {
-  const { note_id, question, answer } = req.body
-
-  if (!note_id || !question || !answer) {
-    return res.status(400).json({ error: "Missing fields" })
-  }
+  const { note_id, question, answer } = req.body;
+  if (!note_id || !question || !answer) return res.status(400).json({ error: "Missing fields" });
 
   const { data, error } = await supabase
     .from('quizzes')
     .insert([{ note_id, question, answer }])
-    .select()
+    .select();
+  if (error) return res.status(500).json({ error });
+  res.json({ data });
+});
 
-  if (error) return res.status(500).json({ error })
-
-  res.json({ data })
-})
-
-// Explanation API endpoint
+// Explanation (dummy)
 app.post("/api/explanation", async (req, res) => {
-  const { topic } = req.body
-  if (!topic) {
-    return res.status(400).json({ error: "Topic is required" })
-  }
-  const explanation = `${topic} is an important concept...`
+  const { topic } = req.body;
+  if (!topic) return res.status(400).json({ error: "Topic is required" });
 
-  res.json({ explanation })
-})
+  const explanation = `${topic} is an important concept...`;
+  res.json({ explanation });
+});
 
 app.listen(PORT, () => {
   console.log(`StudyMate running on http://localhost:${PORT}`);
-});  
+});
