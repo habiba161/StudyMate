@@ -118,18 +118,96 @@ app.post('/api/summary', async (req, res) => {
 });
 // --------------------------------------------------------
 
-// Quiz
+// -------------------- Gemini Quiz --------------------
 app.post("/api/quiz", async (req, res) => {
-  const { note_id, question, answer } = req.body;
-  if (!note_id || !question || !answer) return res.status(400).json({ error: "Missing fields" });
+  try {
+    const { note_text } = req.body;
 
-  const { data, error } = await supabase
-    .from('quizzes')
-    .insert([{ note_id, question, answer }])
-    .select();
-  if (error) return res.status(500).json({ error });
-  res.json({ data });
+    if (!note_text) {
+      return res.status(400).json({ error: "No notes or topic provided" });
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+
+    const prompt = `
+Generate exactly 5 quiz questions with answers.
+
+Return ONLY valid JSON.
+DO NOT include markdown, explanations, or extra text.
+
+Format:
+[
+  {"question": "string", "answer": "string"},
+  {"question": "string", "answer": "string"}
+]
+
+Notes:
+${note_text}
+`;
+
+    const result = await model.generateContent(prompt);
+
+    let text = result.response.text();
+
+    text = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    console.log("RAW AI RESPONSE:\n", text); // debug
+
+    let quizData = [];
+
+    try {
+      quizData = JSON.parse(text);
+    } catch (err) {
+      console.warn("JSON parse failed, trying fallback...");
+
+      const regex = /(?:\d+\.\s*(.+?)\nAnswer:\s*(.+))/gs;
+      let match;
+
+      while ((match = regex.exec(text)) !== null) {
+        quizData.push({
+          question: match[1].trim(),
+          answer: match[2].trim()
+        });
+      }
+
+      if (quizData.length === 0) {
+        const blocks = text.split(/\n\s*\n/);
+
+        blocks.forEach(block => {
+          const qMatch = block.match(/Q[:\-]\s*(.+)/i);
+          const aMatch = block.match(/A[:\-]\s*(.+)/i);
+
+          if (qMatch && aMatch) {
+            quizData.push({
+              question: qMatch[1].trim(),
+              answer: aMatch[1].trim()
+            });
+          }
+        });
+      }
+    }
+
+    if (quizData.length === 0) {
+      return res.status(500).json({
+        error: "AI returned no valid quiz data",
+        raw: text
+      });
+    }
+
+    res.json({ data: quizData });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: "Quiz generation failed",
+      details: err.message
+    });
+  }
 });
+// ---------------------------------------------------
 
 // Explanation (dummy)
 app.post("/api/explanation", async (req, res) => {
