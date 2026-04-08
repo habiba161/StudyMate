@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Notes - StudyMate</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 
@@ -35,14 +36,13 @@
 
       <div class="two-col">
 
-        <!-- LEFT SIDE -->
         <div>
           <div class="panel">
             <div class="upload-zone">
               <div class="big-icon">⤴</div>
               <h2 style="margin:12px 0 6px;font-size:18px;">Drag and drop your files here</h2>
               <p style="margin:0 0 10px;color:#64748b;">or click to browse</p>
-              <p style="margin:0;color:#64748b;font-size:14px;">Supports PDF, DOCX, TXT files</p>
+              <p style="margin:0;color:#64748b;font-size:14px;">Supports TXT, PDF, DOCX files</p>
             </div>
           </div>
 
@@ -62,7 +62,6 @@
           </div>
         </div>
 
-        <!-- RIGHT SIDE -->
         <div class="panel">
           <div class="section-mini-title">
             <span style="color:#2563eb;">✦</span>
@@ -81,7 +80,7 @@
 
 </div>
 
-<!-- AI Summary Script -->
+<!-- Summary Generation -->
 <script>
 document.getElementById("generateSummaryBtn").addEventListener("click", async () => {
   const text = document.querySelector(".textarea").value;
@@ -97,9 +96,7 @@ document.getElementById("generateSummaryBtn").addEventListener("click", async ()
   try {
     const res = await fetch("/api/summary", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text })
     });
 
@@ -118,8 +115,6 @@ document.getElementById("generateSummaryBtn").addEventListener("click", async ()
 });
 </script>
 
-<!-- Supabase Upload Script -->
 <script type="module" src="/js/upload.js"></script>
-
 </body>
 </html>
