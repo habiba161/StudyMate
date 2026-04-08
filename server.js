@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const supabase = require('./lib/supabaseClient');
 const bcrypt = require('bcrypt');
-const { TextServiceClient } = require('@google-ai/generativelanguage').v1beta2;
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize Gemini client
-const client = new TextServiceClient({ apiKey: process.env.GOOGLE_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 // Helper to serve HTML pages
 const sendPage = (page) => (req, res) => {
@@ -95,17 +95,25 @@ app.post('/api/summary', async (req, res) => {
   try {
     const { text } = req.body;
 
-    if (!text) return res.status(400).json({ error: "No text provided" });
+    if (!text) {
+      return res.status(400).json({ error: "No text provided" });
+    }
 
-    const response = await client.generateText({
-      model: "models/text-bison-001", // fixed supported model
-      prompt: { text: text }
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
-    res.json({ summary: response[0].candidates[0].content });
+    const result = await model.generateContent(
+      `Summarize this text in simple words:\n\n${text}`
+    );
+
+    const summary = result.response.text();
+
+    res.json({ summary });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Summary generation failed", details: err.message });
+    res.status(500).json({
+      error: "Summary generation failed",
+      details: err.message
+    });
   }
 });
 // --------------------------------------------------------
