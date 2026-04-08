@@ -6,7 +6,11 @@ const app = express();
 const bcrypt = require('bcrypt')
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
+const OpenAI = require("openai");
 
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 const sendPage = (page) => (req, res) => {
@@ -114,21 +118,36 @@ app.post("/api/login", async (req, res) => {
 
 // Summary API endpoint
 app.post("/api/summary", async (req, res) => {
-  const { note_id, summary_text } = req.body
+  try {
+    const { text } = req.body;
 
-  if (!note_id || !summary_text) {
-    return res.status(400).json({ error: "Missing fields" })
+    if (!text) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4.1-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Summarize the following study notes clearly for a university student."
+        },
+        {
+          role: "user",
+          content: text
+        }
+      ]
+    });
+
+    const summary = response.choices[0].message.content;
+
+    res.json({ summary });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Summary generation failed" });
   }
-
-  const { data, error } = await supabase
-    .from('summaries')
-    .insert([{ note_id, summary_text }])
-    .select()
-
-  if (error) return res.status(500).json({ error })
-
-  res.json({ data })
-})
+});
 
 // Quiz API endpoint
 app.post("/api/quiz", async (req, res) => {
