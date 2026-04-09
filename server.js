@@ -116,7 +116,7 @@ app.post('/api/summary', async (req, res) => {
 });
 // --------------------------------------------------------
 
-// -------------------- Gemini Quiz --------------------
+// -------------------- Gemini Quizes --------------------
 app.post("/api/quiz", async (req, res) => {
   try {
     const { note_text } = req.body;
