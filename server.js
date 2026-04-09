@@ -99,9 +99,7 @@ app.post('/api/summary', async (req, res) => {
       return res.status(400).json({ error: "No text provided" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-    const result = await model.generateContent(
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); const result = await model.generateContent(
       `Summarize this text in simple words:\n\n${text}`
     );
 
@@ -127,9 +125,7 @@ app.post("/api/quiz", async (req, res) => {
       return res.status(400).json({ error: "No notes or topic provided" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-    const prompt = `
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); const prompt = `
 Generate exactly 5 quiz questions with answers.
 
 Return ONLY valid JSON.
@@ -217,9 +213,7 @@ app.post("/api/explanation", async (req, res) => {
       return res.status(400).json({ error: "Topic is required" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-    const prompt = `
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); const prompt = `
 Explain this topic in simple, clear terms for a student:
 
 Topic: ${topic}

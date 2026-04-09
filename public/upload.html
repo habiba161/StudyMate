@@ -1,120 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Notes - StudyMate</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
-<div class="app-shell">
+  <div class="app-shell">
 
-  <aside class="sidebar">
-    <div class="sidebar-top">
-      <a href="/dashboard" class="logo">
-        <span class="logo-icon"></span>
-        <span>StudyMate</span>
-      </a>
-      <nav class="side-nav">
-        <a class="side-link" href="/dashboard"><span class="side-icon">⌂</span>Dashboard</a>
-        <a class="side-link active" href="/dashboard/upload"><span class="side-icon">⤴</span>Upload Notes</a>
-        <a class="side-link" href="/dashboard/quiz"><span class="side-icon">❓</span>Generate Quiz</a>
-        <a class="side-link" href="/dashboard/explain"><span class="side-icon">✿</span>AI Explanation</a>
-        <a class="side-link" href="/dashboard/progress"><span class="side-icon">↗</span>Progress Tracker</a>
-        <a class="side-link" href="/dashboard/profile"><span class="side-icon">◔</span>Profile</a>
-      </nav>
-    </div>
-    <a class="logout" href="/login">↩ Logout</a>
-  </aside>
-
-  <main class="main-content">
-    <div class="page-wrap" style="max-width:1180px;">
-      <h1 class="page-title">Upload Notes</h1>
-      <p class="page-sub">Upload your study notes or paste text to generate AI summaries</p>
-
-      <div class="two-col">
-
-        <div>
-          <div class="panel">
-            <div class="upload-zone">
-              <div class="big-icon">⤴</div>
-              <h2 style="margin:12px 0 6px;font-size:18px;">Drag and drop your files here</h2>
-              <p style="margin:0 0 10px;color:#64748b;">or click to browse</p>
-              <p style="margin:0;color:#64748b;font-size:14px;">Supports TXT, PDF, DOCX files</p>
-            </div>
-          </div>
-
-          <div class="panel" style="margin-top:18px;">
-            <div class="section-mini-title">
-              <span style="color:#2563eb;">📄</span>
-              <span>Or paste your notes manually</span>
-            </div>
-
-            <textarea class="textarea" placeholder="Paste your study notes here..."></textarea>
-
-            <div style="margin-top:18px;">
-              <button id="generateSummaryBtn" class="btn btn-primary btn-full">
-                ✦ Generate Summary
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="section-mini-title">
-            <span style="color:#2563eb;">✦</span>
-            <span>AI Generated Summary</span>
-          </div>
-
-          <div id="summaryOutput" class="empty-box">
-            <div style="font-size:64px; margin-bottom:14px;">✧</div>
-            <p>Your AI-generated summary will appear here</p>
-          </div>
-        </div>
-
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="/dashboard" class="logo">
+          <span class="logo-icon"></span>
+          <span>StudyMate</span>
+        </a>
+        <nav class="side-nav">
+          <a class="side-link" href="/dashboard"><span class="side-icon">⌂</span>Dashboard</a>
+          <a class="side-link active" href="/dashboard/upload"><span class="side-icon">⤴</span>Upload Notes</a>
+          <a class="side-link" href="/dashboard/quiz"><span class="side-icon">❓</span>Generate Quiz</a>
+          <a class="side-link" href="/dashboard/explain"><span class="side-icon">✿</span>AI Explanation</a>
+          <a class="side-link" href="/dashboard/progress"><span class="side-icon">↗</span>Progress Tracker</a>
+          <a class="side-link" href="/dashboard/profile"><span class="side-icon">◔</span>Profile</a>
+        </nav>
       </div>
-    </div>
-  </main>
+      <a class="logout" href="/login">↩ Logout</a>
+    </aside>
 
-</div>
+    <main class="main-content">
+      <div class="page-wrap" style="max-width:1180px;">
+        <h1 class="page-title">Upload Notes</h1>
+        <p class="page-sub">Upload your study notes or paste text to generate AI summaries</p>
 
-<!-- Summary Generation -->
-<script>
-document.getElementById("generateSummaryBtn").addEventListener("click", async () => {
-  const text = document.querySelector(".textarea").value;
-  const outputBox = document.getElementById("summaryOutput");
+        <div class="two-col">
 
-  if (!text) {
-    alert("Please enter some notes");
-    return;
-  }
+          <div>
+            <div class="panel">
+              <div class="upload-zone">
+                <div class="big-icon">⤴</div>
+                <h2 style="margin:12px 0 6px;font-size:18px;">Drag and drop your files here</h2>
+                <p style="margin:0 0 10px;color:#64748b;">or click to browse</p>
+                <p style="margin:0;color:#64748b;font-size:14px;">Supports TXT, PDF, PPTX files</p>
+              </div>
+            </div>
 
-  outputBox.innerHTML = "<p>Generating summary...</p>";
+            <div class="panel" style="margin-top:18px;">
+              <div class="section-mini-title">
+                <span style="color:#2563eb;">📄</span>
+                <span>Or paste your notes manually</span>
+              </div>
 
-  try {
-    const res = await fetch("/api/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text })
+              <textarea class="textarea" placeholder="Paste your study notes here..."></textarea>
+
+              <div style="margin-top:18px;">
+                <button id="generateSummaryBtn" class="btn btn-primary btn-full">
+                  ✦ Generate Summary
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="section-mini-title">
+              <span style="color:#2563eb;">✦</span>
+              <span>AI Generated Summary</span>
+            </div>
+
+            <div id="summaryOutput" class="empty-box">
+              <div style="font-size:64px; margin-bottom:14px;">✧</div>
+              <p>Your AI-generated summary will appear here</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Summary Generation -->
+  <script>
+    document.getElementById("generateSummaryBtn").addEventListener("click", async () => {
+      const text = document.querySelector(".textarea").value;
+      const outputBox = document.getElementById("summaryOutput");
+
+      if (!text) {
+        alert("Please enter some notes");
+        return;
+      }
+
+      outputBox.innerHTML = "<p>Generating summary...</p>";
+
+      try {
+        const res = await fetch("/api/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await res.json();
+
+        if (data.summary) {
+          outputBox.innerHTML = `<p>${data.summary}</p>`;
+        } else {
+          outputBox.innerHTML = "<p>Failed to generate summary</p>";
+        }
+
+      } catch (err) {
+        console.error(err);
+        outputBox.innerHTML = "<p>Error generating summary</p>";
+      }
     });
+  </script>
 
-    const data = await res.json();
-
-    if (data.summary) {
-      outputBox.innerHTML = `<p>${data.summary}</p>`;
-    } else {
-      outputBox.innerHTML = "<p>Failed to generate summary</p>";
-    }
-
-  } catch (err) {
-    console.error(err);
-    outputBox.innerHTML = "<p>Error generating summary</p>";
-  }
-});
-</script>
-
-<script type="module" src="/js/upload.js"></script>
+  <script type="module" src="/js/upload.js"></script>
 </body>
+
 </html>
