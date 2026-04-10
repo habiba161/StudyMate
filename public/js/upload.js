@@ -117,5 +117,3 @@ function extractTextFromPPTX(file) {
 
   reader.readAsArrayBuffer(file);
 }
-
-// Test
