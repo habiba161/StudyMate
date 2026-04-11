@@ -53,29 +53,47 @@
 
 <!-- ✅ Script -->
 <script type="module">
-import { supabase } from "/js/supabase.js";
-
 document.getElementById("signupBtn").addEventListener("click", async () => {
-  const name = document.getElementById("name").value;
-  const email = document.getElementById("email").value;
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
   const confirmPassword = document.getElementById("confirmPassword").value;
+
+  if (!name || !email || !password || !confirmPassword) {
+    alert("Please fill in all fields");
+    return;
+  }
 
   if (password !== confirmPassword) {
     alert("Passwords do not match");
     return;
   }
 
-  const { data, error } = await supabase.auth.signUp({
-    email: email,
-    password: password,
-  });
+  try {
+    const response = await fetch("/api/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        full_name: name,
+        email: email,
+        password: password
+      })
+    });
 
-  if (error) {
-    alert(error.message);
-  } else {
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.error || "Signup failed");
+      return;
+    }
+
     alert("Account created successfully!");
     window.location.href = "/login";
+  } catch (err) {
+    console.error("Signup error:", err);
+    alert("Something went wrong. Please try again.");
   }
 });
 </script>
