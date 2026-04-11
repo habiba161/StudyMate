@@ -25,7 +25,7 @@ Open in browser:
 http://localhost:5050
 
 ## 🚀 Live Application
-https://studymate.onrender.com
+https://studymate-qfml.onrender.com
 
 ## 🐳 Docker Image
 docker build -t studymate-app .
