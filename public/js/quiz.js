@@ -1,4 +1,3 @@
-// quiz.js
 const generateBtn = document.getElementById("generateQuizBtn");
 const quizInput = document.getElementById("quizInput");
 const quizResults = document.getElementById("quizResults");

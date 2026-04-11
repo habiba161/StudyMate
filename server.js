@@ -163,7 +163,6 @@ ${note_text}
 
     let text = result.response.text();
 
-    // safer cleanup
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
     let quizData;
@@ -175,7 +174,6 @@ ${note_text}
       quizData = JSON.parse(text);
     }
 
-    // optional DB save
     if (note_id) {
       const formatted = quizData.map(q => ({
         note_id,
@@ -288,7 +286,6 @@ app.get("/api/progress/:user_id", async (req, res) => {
 app.get("/api/stats/:user_id", async (req, res) => {
   const { user_id } = req.params;
 
-  // get notes first (bridge)
   const { data: notes } = await supabase
     .from("notes")
     .select("id")
