@@ -23,3 +23,13 @@ docker run -p 5050:3000 studymate-app
 
 Open in browser:
 http://localhost:5050
+
+## 🚀 Live Application
+https://studymate.onrender.com
+
+## 🐳 Docker Image
+docker build -t studymate-app .
+docker run -p 5050:3000 studymate-app
+
+## ⚙️ CI/CD Pipeline
+GitHub Actions is used to automatically build the project on every push.
