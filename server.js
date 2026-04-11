@@ -11,15 +11,15 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Initialize Gemini client
+// Gemini init
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-// Helper to serve HTML pages
+// helper pages
 const sendPage = (page) => (req, res) => {
   res.sendFile(path.join(__dirname, 'public', page));
 };
 
-// --- Routes for pages ---
+// pages
 app.get('/', sendPage('index.html'));
 app.get('/signup', sendPage('signup.html'));
 app.get('/login', sendPage('login.html'));
@@ -30,9 +30,8 @@ app.get('/dashboard/explain', sendPage('explain.html'));
 app.get('/dashboard/progress', sendPage('progress.html'));
 app.get('/dashboard/profile', sendPage('profile.html'));
 
-// --- API Endpoints ---
+// ---------------- NOTES ----------------
 
-// Notes
 app.get("/api/notes", async (req, res) => {
   const { data, error } = await supabase.from('notes').select('*');
   if (error) return res.status(500).json({ error });
@@ -52,12 +51,14 @@ app.post("/api/notes", async (req, res) => {
   res.json({ data });
 });
 
-// Signup
+// ---------------- AUTH ----------------
+
 app.post("/api/signup", async (req, res) => {
   const { full_name, email, password } = req.body;
   if (!full_name || !email || !password) return res.status(400).json({ error: "Missing fields" });
 
   const password_hash = await bcrypt.hash(password, 10);
+
   const { data, error } = await supabase
     .from('profiles')
     .insert([{ full_name, email, password_hash }])
@@ -72,9 +73,9 @@ app.post("/api/signup", async (req, res) => {
   res.json({ message: "Account created", data: safeData });
 });
 
-// Login
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -87,53 +88,70 @@ app.post("/api/login", async (req, res) => {
   if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
 
   const { password_hash, ...safeUser } = data;
-  res.json({ message: "Login successful", user: safeUser, redirect: "/dashboard" });
+
+  res.json({
+    message: "Login successful",
+    user: safeUser,
+    redirect: "/dashboard"
+  });
 });
 
-// -------------------- Gemini Summary --------------------
+// ---------------- SUMMARY ----------------
 app.post('/api/summary', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, user_id, note_id } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: "No text provided" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); const result = await model.generateContent(
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const result = await model.generateContent(
       `Summarize this text in simple words:\n\n${text}`
     );
 
     const summary = result.response.text();
 
+    
+    if (note_id) {
+      const { error } = await supabase.from("summaries").insert([
+        {
+          note_id,
+          summary_text: summary
+        }
+      ]);
+
+      if (error) console.log("summary insert error:", error);
+    }
+
     res.json({ summary });
+
   } catch (err) {
-    console.error(err);
     res.status(500).json({
       error: "Summary generation failed",
       details: err.message
     });
   }
 });
-// --------------------------------------------------------
 
-// -------------------- Gemini Quizes --------------------
+// ---------------- QUIZ ----------------
+
 app.post("/api/quiz", async (req, res) => {
   try {
-    const { note_text } = req.body;
+    const { note_text, note_id } = req.body;
 
     if (!note_text) {
-      return res.status(400).json({ error: "No notes or topic provided" });
+      return res.status(400).json({ error: "No notes provided" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); const prompt = `
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
 Generate exactly 5 quiz questions with answers.
 
-Return ONLY valid JSON.
-DO NOT include markdown, explanations, or extra text.
-
-Format:
+Return ONLY valid JSON:
 [
-  {"question": "string", "answer": "string"},
   {"question": "string", "answer": "string"}
 ]
 
@@ -145,58 +163,32 @@ ${note_text}
 
     let text = result.response.text();
 
-    text = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+    // safer cleanup
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
-    console.log("RAW AI RESPONSE:\n", text); // debug
-
-    let quizData = [];
+    let quizData;
 
     try {
       quizData = JSON.parse(text);
     } catch (err) {
-      console.warn("JSON parse failed, trying fallback...");
-
-      const regex = /(?:\d+\.\s*(.+?)\nAnswer:\s*(.+))/gs;
-      let match;
-
-      while ((match = regex.exec(text)) !== null) {
-        quizData.push({
-          question: match[1].trim(),
-          answer: match[2].trim()
-        });
-      }
-
-      if (quizData.length === 0) {
-        const blocks = text.split(/\n\s*\n/);
-
-        blocks.forEach(block => {
-          const qMatch = block.match(/Q[:\-]\s*(.+)/i);
-          const aMatch = block.match(/A[:\-]\s*(.+)/i);
-
-          if (qMatch && aMatch) {
-            quizData.push({
-              question: qMatch[1].trim(),
-              answer: aMatch[1].trim()
-            });
-          }
-        });
-      }
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      quizData = JSON.parse(text);
     }
 
-    if (quizData.length === 0) {
-      return res.status(500).json({
-        error: "AI returned no valid quiz data",
-        raw: text
-      });
+    // optional DB save
+    if (note_id) {
+      const formatted = quizData.map(q => ({
+        note_id,
+        question: q.question,
+        answer: q.answer
+      }));
+
+      await supabase.from("quizzes").insert(formatted);
     }
 
     res.json({ data: quizData });
 
   } catch (err) {
-    console.error(err);
     res.status(500).json({
       error: "Quiz generation failed",
       details: err.message
@@ -204,40 +196,133 @@ ${note_text}
   }
 });
 
+// ---------------- EXPLANATION ----------------
 
 app.post("/api/explanation", async (req, res) => {
   try {
     const { topic } = req.body;
 
-    if (!topic) {
-      return res.status(400).json({ error: "Topic is required" });
-    }
+    if (!topic) return res.status(400).json({ error: "Topic is required" });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); const prompt = `
-Explain this topic in simple, clear terms for a student:
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-Topic: ${topic}
+    const result = await model.generateContent(
+      `Explain this topic in simple terms:\n\n${topic}`
+    );
 
-Make it:
-- Easy to understand
-- Well structured
-- Use examples if helpful
-`;
-
-    const result = await model.generateContent(prompt);
-
-    const explanation = result.response.text();
-
-    res.json({ explanation });
+    res.json({ explanation: result.response.text() });
 
   } catch (err) {
-    console.error(err);
     res.status(500).json({
-      error: "Explanation generation failed",
+      error: "Explanation failed",
       details: err.message
     });
   }
 });
+
+// ---------------- QUIZ SUBMIT + PROGRESS ----------------
+
+app.post("/api/quiz/submit", async (req, res) => {
+  const { user_id, topic, answers } = req.body;
+
+  if (!user_id || !answers) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  let correct = 0;
+
+  answers.forEach(a => {
+    if (a.user_answer === a.correct_answer) correct++;
+  });
+
+  const score = Math.round((correct / answers.length) * 100);
+
+  const { data, error } = await supabase
+    .from("progress")
+    .upsert([
+      {
+        user_id,
+        topic: topic || "General",
+        score,
+        status: "completed",
+        updated_at: new Date().toISOString()
+      }
+    ])
+    .select();
+
+  if (error) return res.status(500).json({ error });
+
+  res.json({
+    score,
+    correct,
+    total: answers.length,
+    progress: data
+  });
+});
+
+// ---------------- PROGRESS FETCH ----------------
+
+app.get("/api/progress/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+
+  const { data, error } = await supabase
+    .from("progress")
+    .select("*")
+    .eq("user_id", user_id);
+
+  if (error) return res.status(500).json({ error });
+
+  const totalTopics = data?.length || 0;
+
+  const avgScore = totalTopics
+    ? data.reduce((acc, item) => acc + (item.score || 0), 0) / totalTopics
+    : 0;
+
+  res.json({
+    totalTopics,
+    avgScore,
+    progress: data
+  });
+});
+
+app.get("/api/stats/:user_id", async (req, res) => {
+  const { user_id } = req.params;
+
+  // get notes first (bridge)
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("id")
+    .eq("user_id", user_id);
+
+  const noteIds = notes?.map(n => n.id) || [];
+
+  // summaries linked via notes
+  const { data: summaries } = await supabase
+    .from("summaries")
+    .select("*")
+    .in("note_id", noteIds);
+
+  // quiz attempts
+  const { data: progress } = await supabase
+    .from("progress")
+    .select("*")
+    .eq("user_id", user_id);
+
+  const totalSummaries = summaries?.length || 0;
+  const quizzesTaken = progress?.length || 0;
+
+  const avgScore = quizzesTaken
+    ? progress.reduce((sum, q) => sum + (q.score || 0), 0) / quizzesTaken
+    : 0;
+
+  res.json({
+    totalSummaries,
+    quizzesTaken,
+    avgScore: Math.round(avgScore)
+  });
+});
+
+// ---------------- START SERVER ----------------
 
 app.listen(PORT, () => {
   console.log(`StudyMate running on http://localhost:${PORT}`);
