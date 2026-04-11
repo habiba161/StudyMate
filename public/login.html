@@ -49,22 +49,39 @@
 
 <!-- ✅ Script -->
 <script type="module">
-import { supabase } from "/js/supabase.js";
-
 document.getElementById("loginBtn").addEventListener("click", async () => {
-  const email = document.getElementById("email").value;
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password,
-  });
+  if (!email || !password) {
+    alert("Please enter email and password");
+    return;
+  }
 
-  if (error) {
-    alert(error.message);
-  } else {
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.error || "Login failed");
+      return;
+    }
+
     alert("Login successful!");
-    window.location.href = "/dashboard";
+    window.location.href = result.redirect || "/dashboard";
+  } catch (err) {
+    console.error("Login error:", err);
+    alert("Something went wrong. Please try again.");
   }
 });
 </script>
