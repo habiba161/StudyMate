@@ -25,15 +25,15 @@ generateBtn.addEventListener("click", async () => {
 
     const data = await res.json();
 
-    if (data.error) {
+    if (!res.ok || data.error) {
       quizResults.innerHTML = `
-        <p style="color:red;"><strong>Error:</strong> ${data.error}</p>
+        <p style="color:red;"><strong>Error:</strong> ${data.error || "Failed to generate quiz"}</p>
         <pre>${data.raw || ""}</pre>
       `;
       return;
     }
 
-    currentQuiz = data.data;
+    currentQuiz = data.data || [];
 
     let html = "<form id='quizForm'><ol>";
 
@@ -64,39 +64,88 @@ generateBtn.addEventListener("click", async () => {
 
     quizResults.innerHTML = html;
 
-    document.getElementById("quizForm").addEventListener("submit", (e) => {
+    document.getElementById("quizForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      let score = 0;
-      let resultHTML = "<h3>Results:</h3><ol>";
+      const userId = localStorage.getItem("user_id");
 
-      currentQuiz.forEach((q, index) => {
-        const userAnswer = e.target[`q${index}`].value.toLowerCase().trim();
-        const correctAnswer = q.answer.toLowerCase().trim();
+      if (!userId) {
+        alert("User not logged in. Please login first.");
+        return;
+      }
 
-        const isCorrect =
-          userAnswer !== "" &&
-          (userAnswer.includes(correctAnswer) || correctAnswer.includes(userAnswer));
+      const answers = currentQuiz.map((q, index) => {
+        const userAnswer = e.target[`q${index}`].value.trim();
 
-        if (isCorrect) score++;
-
-        resultHTML += `
-          <li>
-            <strong>${q.question}</strong><br>
-            Your answer: ${userAnswer || "—"}<br>
-            Correct answer: ${q.answer}<br>
-            <span style="color:${isCorrect ? "green" : "red"};">
-              ${isCorrect ? "Correct" : "Incorrect"}
-            </span>
-          </li><br>
-        `;
+        return {
+          question: q.question,
+          correct_answer: q.answer,
+          user_answer: userAnswer
+        };
       });
 
-      resultHTML += `</ol>
-        <h3>Score: ${score} / ${currentQuiz.length}</h3>
-      `;
+      try {
+        const submitRes = await fetch("/api/quiz/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            user_id: Number(userId),
+            topic: notes,
+            answers
+          })
+        });
 
-      document.getElementById("scoreResult").innerHTML = resultHTML;
+        const submitData = await submitRes.json();
+
+        if (!submitRes.ok || submitData.error) {
+          document.getElementById("scoreResult").innerHTML = `
+            <p style="color:red;">${submitData.error || "Failed to submit quiz"}</p>
+          `;
+          return;
+        }
+
+        let resultHTML = "<h3>Results:</h3><ol>";
+
+        answers.forEach((item, index) => {
+          const userAnswer = item.user_answer.toLowerCase().trim();
+          const correctAnswer = item.correct_answer.toLowerCase().trim();
+
+          const isCorrect =
+            userAnswer !== "" &&
+            (userAnswer.includes(correctAnswer) || correctAnswer.includes(userAnswer));
+
+          resultHTML += `
+            <li>
+              <strong>${item.question}</strong><br>
+              Your answer: ${item.user_answer || "—"}<br>
+              Correct answer: ${item.correct_answer}<br>
+              <span style="color:${isCorrect ? "green" : "red"};">
+                ${isCorrect ? "Correct" : "Incorrect"}
+              </span>
+            </li><br>
+          `;
+        });
+
+        resultHTML += `
+          </ol>
+          <h3>Score: ${submitData.score} / ${submitData.total_questions}</h3>
+          <p>Percentage: ${submitData.percentage}%</p>
+        `;
+
+        document.getElementById("scoreResult").innerHTML = resultHTML;
+
+        setTimeout(() => {
+          window.location.href = "/dashboard/progress";
+        }, 2000);
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("scoreResult").innerHTML = `
+          <p style="color:red;">Error submitting quiz.</p>
+        `;
+      }
     });
 
   } catch (err) {
